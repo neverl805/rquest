@@ -2472,17 +2472,16 @@ fn apply_http1_config(mut builder: Http1Builder<'_>, http1: Http1Config) {
 }
 
 fn apply_http2_config(mut builder: Http2Builder<'_>, http2: Http2Config) {
+    // Note: Headers priority, pseudo order, settings order, and priorities
+    // are handled at the core layer (http2::client::Builder), not here at the util layer (hyper2::Builder)
+
     builder
         .initial_stream_id(http2.initial_stream_id)
         .initial_stream_window_size(http2.initial_stream_window_size)
         .initial_connection_window_size(http2.initial_connection_window_size)
         .max_concurrent_streams(http2.max_concurrent_streams)
         .header_table_size(http2.header_table_size)
-        .max_frame_size(http2.max_frame_size)
-        .headers_priority(http2.headers_priority)
-        .headers_pseudo_order(http2.headers_pseudo_order)
-        .settings_order(http2.settings_order)
-        .priority(http2.priority);
+        .max_frame_size(http2.max_frame_size);
 
     if let Some(max_header_list_size) = http2.max_header_list_size {
         builder.max_header_list_size(max_header_list_size);
@@ -2492,11 +2491,17 @@ fn apply_http2_config(mut builder: Http2Builder<'_>, http2: Http2Config) {
         builder.enable_push(enable_push);
     }
 
-    if let Some(unknown_setting8) = http2.unknown_setting8 {
+    // Map enable_connect_protocol to unknown_setting8 (SETTINGS_ENABLE_CONNECT_PROTOCOL)
+    if let Some(enable_connect_protocol) = http2.enable_connect_protocol {
+        builder.unknown_setting8(enable_connect_protocol);
+    } else if let Some(unknown_setting8) = http2.unknown_setting8 {
         builder.unknown_setting8(unknown_setting8);
     }
 
-    if let Some(unknown_setting9) = http2.unknown_setting9 {
+    // Map no_rfc7540_priorities to unknown_setting9 (SETTINGS_NO_RFC7540_PRIORITIES)
+    if let Some(no_rfc7540_priorities) = http2.no_rfc7540_priorities {
+        builder.unknown_setting9(no_rfc7540_priorities);
+    } else if let Some(unknown_setting9) = http2.unknown_setting9 {
         builder.unknown_setting9(unknown_setting9);
     }
 }

@@ -1,3 +1,7 @@
+//! HTTP/1 configuration.
+
+#![allow(missing_docs)]
+
 use typed_builder::TypedBuilder;
 
 /// Configuration config for HTTP/1 connections.

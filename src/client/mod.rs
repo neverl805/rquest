@@ -7,7 +7,7 @@ pub use self::response::Response;
 pub use self::upgrade::Upgraded;
 
 pub mod body;
-mod config;
+pub mod config;
 pub mod decoder;
 pub mod emulation;
 pub mod http;

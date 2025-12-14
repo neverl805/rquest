@@ -83,3 +83,8 @@ impl EmulationProviderFactory for EmulationProvider {
         self
     }
 }
+
+/// Type alias for `EmulationProvider` for backwards compatibility with wreq.
+pub type Emulation = EmulationProvider;
+/// Type alias for `EmulationProviderBuilder` for backwards compatibility with wreq.
+pub type EmulationBuilder = EmulationProviderBuilder;

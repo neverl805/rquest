@@ -332,14 +332,25 @@ pub use self::client::websocket::{
 pub use self::client::{
     Body, Client, ClientBuilder, ClientUpdate, EmulationProvider, EmulationProviderFactory,
     Http1Config, Http2Config, Request, RequestBuilder, Response, Upgraded,
+    config::{http1, http2},
+    // Type aliases for backwards compatibility with wreq
+    emulation::{Emulation, EmulationBuilder},
 };
 pub use self::proxy::{NoProxy, Proxy};
 pub use self::tls::{
     AlpnProtos, AlpsProtos, CertStore, CertStoreBuilder, Identity, TlsConfig, TlsInfo, TlsVersion,
+    // Type aliases for backwards compatibility with wreq
+    TlsOptions, TlsOptionsBuilder,
 };
 pub use self::util::client::{Dst, Http1Builder, Http2Builder};
 pub use boring2::ssl::{CertificateCompressionAlgorithm, ExtensionType, SslCurve};
-pub use hyper2::{Priority, PseudoOrder, SettingsOrder, StreamDependency, StreamId};
+// HTTP/2 frame types are now exported through client::config::http2
+pub use self::client::config::http2::{
+    ExperimentalSettings, Priorities, PrioritiesBuilder, Priority, PseudoId, PseudoOrder, Setting,
+    SettingId, SettingsOrder, SettingsOrderBuilder, StreamDependency, StreamId,
+    // Type aliases for backwards compatibility with wreq
+    Http2Options, Http2OptionsBuilder,
+};
 
 mod client;
 mod connect;

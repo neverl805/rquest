@@ -383,3 +383,8 @@ impl<T: IntoExtensionPermutation> IntoExtensionPermutation for Option<T> {
         self.and_then(|v| v.into())
     }
 }
+
+/// Type alias for `TlsConfig` for backwards compatibility with wreq.
+pub type TlsOptions = TlsConfig;
+/// Type alias for `TlsConfigBuilder` for backwards compatibility with wreq.
+pub type TlsOptionsBuilder = TlsConfigBuilder;
