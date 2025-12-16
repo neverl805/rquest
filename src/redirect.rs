@@ -9,7 +9,7 @@ use std::{error::Error as StdError, sync::Arc};
 
 use crate::header::{AUTHORIZATION, COOKIE, HeaderMap, PROXY_AUTHORIZATION, WWW_AUTHENTICATE};
 use http::Method;
-use hyper2::StatusCode;
+use http::StatusCode;
 
 use crate::Url;
 
@@ -371,7 +371,7 @@ fn test_redirect_custom_policy_methods() {
 
 #[test]
 fn test_remove_sensitive_headers() {
-    use hyper2::header::{ACCEPT, AUTHORIZATION, COOKIE, HeaderValue};
+    use http::header::{ACCEPT, AUTHORIZATION, COOKIE, HeaderValue};
 
     let mut headers = HeaderMap::new();
     headers.insert(ACCEPT, HeaderValue::from_static("*/*"));

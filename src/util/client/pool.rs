@@ -15,8 +15,8 @@ use antidote::Mutex;
 use log::{debug, trace};
 use lru::LruCache;
 
-use hyper2::rt::Sleep;
-use hyper2::rt::Timer as _;
+use crate::core::rt::Sleep;
+use crate::core::rt::Timer as _;
 use tokio::sync::oneshot;
 
 use crate::util::common::{exec, exec::Exec, timer::Timer};
@@ -119,8 +119,8 @@ impl Config {
 impl<T, K: Key> Pool<T, K> {
     pub fn new<E, M>(config: Config, executor: E, timer: Option<M>) -> Pool<T, K>
     where
-        E: hyper2::rt::Executor<exec::BoxSendFuture> + Send + Sync + Clone + 'static,
-        M: hyper2::rt::Timer + Send + Sync + Clone + 'static,
+        E: crate::core::rt::Executor<exec::BoxSendFuture> + Send + Sync + Clone + 'static,
+        M: crate::core::rt::Timer + Send + Sync + Clone + 'static,
     {
         let exec = Exec::new(executor);
         let timer = timer.map(Timer::new);

@@ -57,13 +57,22 @@ pub struct ConnectRequest {
     extra: Arc<HashMemo<ConnectExtra>>,
 }
 
+impl std::fmt::Debug for ConnectRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConnectRequest")
+            .field("uri", &self.uri)
+            .finish_non_exhaustive()
+    }
+}
+
 // ===== impl ConnectRequest =====
 
 impl ConnectRequest {
     /// Create a new [`ConnectRequest`] with the given URI and options.
     #[inline]
     fn new(uri: Uri, options: Option<RequestOptions>) -> ConnectRequest {
-        let extra = ConnectExtra::new(uri.clone(), options);
+        let enforced_version = options.as_ref().and_then(|o| o.enforced_version());
+        let extra = ConnectExtra::new(uri.clone(), enforced_version);
         let extra = HashMemo::with_hasher(extra, HASHER);
         ConnectRequest {
             uri,
@@ -770,6 +779,12 @@ pub struct ResponseFuture {
     inner: Pin<Box<dyn Future<Output = Result<Response<Incoming>, Error>> + Send>>,
 }
 
+impl std::fmt::Debug for ResponseFuture {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ResponseFuture").finish_non_exhaustive()
+    }
+}
+
 // ===== impl ResponseFuture =====
 
 impl ResponseFuture {
@@ -803,6 +818,14 @@ pub struct Builder {
     h2_builder: conn::http2::Builder<Exec>,
     pool_config: pool::Config,
     pool_timer: Option<ArcTimer>,
+}
+
+impl std::fmt::Debug for Builder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Builder")
+            .field("pool_config", &self.pool_config)
+            .finish_non_exhaustive()
+    }
 }
 
 // ===== impl Builder =====

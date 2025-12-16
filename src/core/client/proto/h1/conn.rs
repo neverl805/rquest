@@ -12,6 +12,7 @@ use http::{
 };
 use http_body::Frame;
 use httparse::ParserConfig;
+use log::{debug, error, trace};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use super::{
@@ -400,7 +401,7 @@ where
         let result = ready!(self.io.poll_read_from_io(cx));
         #[allow(clippy::manual_inspect)]
         Poll::Ready(result.map_err(|e| {
-            trace!(error = %e, "force_io_read; io error");
+            trace!("force_io_read; io error: {}", e);
             self.state.close();
             e
         }))
@@ -703,7 +704,7 @@ where
     pub(crate) fn poll_flush(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         ready!(Pin::new(&mut self.io).poll_flush(cx))?;
         self.try_keep_alive(cx);
-        trace!("flushed({}): {:?}", T::LOG, self.state);
+        trace!("flushed: {:?}", self.state);
         Poll::Ready(Ok(()))
     }
 
@@ -756,7 +757,7 @@ where
     }
 
     pub(super) fn on_upgrade(&mut self) -> upgrade::OnUpgrade {
-        trace!("{}: prepare possible HTTP upgrade", T::LOG);
+        trace!("prepare possible HTTP upgrade");
         self.state.prepare_upgrade()
     }
 }
@@ -921,8 +922,7 @@ impl State {
                     self.idle::<T>();
                 } else {
                     trace!(
-                        "try_keep_alive({}): could keep-alive, but status = {:?}",
-                        T::LOG,
+                        "try_keep_alive: could keep-alive, but status = {:?}",
                         self.keep_alive
                     );
                     self.close();

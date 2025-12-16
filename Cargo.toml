@@ -83,7 +83,7 @@ gzip = [
     "dep:tokio-util",
 ]
 hickory-dns = ["dep:hickory-resolver"]
-http2-tracing = ["hyper2/http2-tracing"]
+http2-tracing = ["http2/tracing"]
 internal_proxy_sys_no_cache = []
 json = ["dep:serde_json"]
 macos-system-configuration = ["dep:system-configuration"]
@@ -358,6 +358,12 @@ version = "0.13"
 [dependencies.bytes]
 version = "1.10.1"
 
+[dependencies.ahash]
+version = "0.8"
+
+[dependencies.schnellru]
+version = "0.2"
+
 [dependencies.cookie_crate]
 version = "0.18"
 optional = true
@@ -375,6 +381,19 @@ optional = true
 version = "0.3.0"
 default-features = false
 
+[dependencies.futures-channel]
+version = "0.3.0"
+
+[dependencies.httparse]
+version = "1.9"
+
+[dependencies.smallvec]
+version = "1.13"
+features = ["const_generics", "const_new"]
+
+[dependencies.want]
+version = "0.3"
+
 [dependencies.hickory-resolver]
 version = "0.25.1"
 optional = true
@@ -388,17 +407,15 @@ version = "1"
 [dependencies.http-body-util]
 version = "0.1"
 
+[dependencies.h2]
+version = "0.4"
+features = ["unstable"]
+
 [dependencies.http2]
+#path = "../http2"
 git = "https://github.com/neverl805/http2"
 features = ["unstable"]
 
-[dependencies.hyper2]
-version = "1.5.5"
-features = [
-    "http1",
-    "http2",
-    "client",
-]
 
 [dependencies.ipnet]
 version = "2.11.0"
@@ -580,3 +597,4 @@ optional = true
 
 [target."cfg(windows)".dependencies.windows-registry]
 version = "0.5.0"
+

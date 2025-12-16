@@ -10,6 +10,11 @@ use http::{
 };
 use smallvec::{SmallVec, smallvec, smallvec_inline};
 
+// No-op macro for trace_span (tracing is only used in dev)
+macro_rules! trace_span {
+    ($($arg:tt)*) => {};
+}
+
 use crate::{
     Extension,
     core::{
@@ -148,7 +153,7 @@ impl Http1Transaction for Client {
                     None => smallvec_inline![MaybeUninit::uninit(); DEFAULT_MAX_HEADERS],
                 };
 
-                trace!(bytes = buf.len(), "Response.parse");
+                trace!("Response.parse bytes={}", buf.len());
 
                 let mut res = httparse::Response::new(&mut []);
                 let bytes = buf.as_ref();

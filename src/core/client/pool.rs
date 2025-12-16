@@ -13,6 +13,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use log::{debug, trace};
+
 use schnellru::ByLength;
 use tokio::sync::oneshot;
 

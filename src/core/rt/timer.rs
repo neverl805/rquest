@@ -146,5 +146,6 @@ impl Time {
 }
 
 mod private {
+    #[derive(Debug)]
     pub struct Sealed {}
 }

@@ -518,9 +518,9 @@ where
 
                 head.maybe_unshift(buf.remaining());
                 trace!(
-                    self.len = head.remaining(),
-                    buf.len = buf.remaining(),
-                    "buffer.flatten"
+                    "buffer.flatten self.len={} buf.len={}",
+                    head.remaining(),
+                    buf.remaining()
                 );
                 //perf: This is a little faster than <Vec as BufMut>>::put,
                 //but accomplishes the same result.
@@ -538,9 +538,9 @@ where
             }
             WriteStrategy::Queue => {
                 trace!(
-                    self.len = self.remaining(),
-                    buf.len = buf.remaining(),
-                    "buffer.queue"
+                    "buffer.queue self.len={} buf.len={}",
+                    self.remaining(),
+                    buf.remaining()
                 );
                 self.queue.push(buf.into());
             }

@@ -2,15 +2,8 @@ use std::sync::Arc;
 
 use http::{Uri, Version};
 
-use crate::{
-    core::client::{
-        connect::TcpConnectOptions,
-        options::{RequestOptions, TransportOptions},
-    },
-    hash::HashMemo,
-    proxy::Matcher as ProxyMacher,
-    tls::{AlpnProtocol, TlsOptions},
-};
+use crate::hash::HashMemo;
+use crate::tls::AlpnProtocol;
 
 /// Uniquely identifies a connection configuration and its lifecycle.
 ///
@@ -21,61 +14,40 @@ pub(crate) type Identifier = Arc<HashMemo<ConnectExtra>>;
 
 /// Metadata describing a reusable network connection.
 ///
-/// [`ConnectExtra`] holds connection-specific parameters such as the target URI, ALPN protocol,
-/// proxy settings, and optional TCP/TLS options. Used for connection
+/// [`ConnectExtra`] holds connection-specific parameters such as the target URI and
+/// enforced HTTP version. Used for connection pooling and identification.
 #[must_use]
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub(crate) struct ConnectExtra {
     /// Target URI.
     uri: Uri,
-    /// Request options.
-    options: Option<RequestOptions>,
+    /// Enforced HTTP version (if any).
+    enforced_version: Option<Version>,
 }
 
 // ===== impl ConnectExtra =====
 
 impl ConnectExtra {
-    /// Create a new [`ConnectExtra`] with the given URI and options.
+    /// Create a new [`ConnectExtra`] with the given URI and enforced version.
     #[inline]
-    pub fn new(uri: Uri, options: Option<RequestOptions>) -> Self {
-        Self { uri, options }
+    pub fn new(uri: Uri, enforced_version: Option<Version>) -> Self {
+        Self { uri, enforced_version }
     }
 
-    /// Return the negotiated [`AlpnProtocol`].
+    /// Get the URI.
+    #[inline]
+    pub fn uri(&self) -> &Uri {
+        &self.uri
+    }
+
+    /// Return the negotiated [`AlpnProtocol`] based on the enforced version.
     pub fn alpn_protocol(&self) -> Option<AlpnProtocol> {
-        match self
-            .options
-            .as_ref()
-            .and_then(RequestOptions::enforced_version)
-        {
+        match self.enforced_version {
             Some(Version::HTTP_11 | Version::HTTP_10 | Version::HTTP_09) => {
                 Some(AlpnProtocol::HTTP1)
             }
             Some(Version::HTTP_2) => Some(AlpnProtocol::HTTP2),
             _ => None,
         }
-    }
-
-    /// Return a reference to the [`ProxyMacher`].
-    #[inline]
-    pub fn proxy_matcher(&self) -> Option<&ProxyMacher> {
-        self.options
-            .as_ref()
-            .and_then(RequestOptions::proxy_matcher)
-    }
-
-    /// Return a reference to the [`TlsOptions`].
-    #[inline]
-    pub fn tls_options(&self) -> Option<&TlsOptions> {
-        self.options
-            .as_ref()
-            .map(RequestOptions::transport_opts)
-            .and_then(TransportOptions::tls_options)
-    }
-
-    /// Return a reference to the [`TcpConnectOptions`].
-    #[inline]
-    pub fn tcp_options(&self) -> Option<&TcpConnectOptions> {
-        self.options.as_ref().map(RequestOptions::tcp_connect_opts)
     }
 }

@@ -19,12 +19,12 @@ use crate::{
             body::Incoming as IncomingBody,
             bounds::Http2ClientConnExec,
             dispatch::{self, TrySendError},
+            options::http2::Http2Options,
             proto::{self, h2::ping},
         },
         error::{BoxError, Error},
         rt::{ArcTimer, Time, Timer},
     },
-    http2::Http2Options,
 };
 
 /// The sender side of an established connection.
@@ -68,6 +68,14 @@ pub struct Builder<Ex> {
     exec: Ex,
     timer: Time,
     opts: Http2Options,
+}
+
+impl<Ex> std::fmt::Debug for Builder<Ex> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Builder")
+            .field("opts", &self.opts)
+            .finish_non_exhaustive()
+    }
 }
 
 // ===== impl SendRequest
@@ -235,6 +243,16 @@ where
         // Crate the HTTP/2 client with the provided options.
         let builder = {
             let mut builder = http2::client::Builder::default();
+
+            // IMPORTANT: Set settings_order FIRST, before any other settings
+            if let Some(order) = self.opts.settings_order {
+                eprintln!("[DEBUG rquest http2.rs] Setting settings_order:");
+                for (i, id) in order.into_iter().enumerate() {
+                    eprintln!("  [{}] {:?} (ID: {})", i, id, u16::from(*id));
+                }
+                builder.settings_order(order);
+            }
+
             builder
                 .initial_max_send_streams(self.opts.initial_max_send_streams)
                 .initial_window_size(self.opts.initial_window_size)
@@ -269,9 +287,6 @@ where
             }
             if let Some(v) = self.opts.no_rfc7540_priorities {
                 builder.no_rfc7540_priorities(v);
-            }
-            if let Some(order) = self.opts.settings_order {
-                builder.settings_order(order);
             }
             if let Some(experimental_settings) = self.opts.experimental_settings {
                 builder.experimental_settings(experimental_settings);

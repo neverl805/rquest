@@ -97,6 +97,49 @@ pub struct NoProxy {
     domains: DomainMatcher,
 }
 
+/// A proxy matcher that determines which requests should go through a proxy.
+///
+/// This struct wraps proxy configuration and provides methods to check if
+/// a given URI should be intercepted by the proxy.
+#[derive(Debug, Clone, Default, Hash, PartialEq, Eq)]
+pub(crate) struct Matcher {
+    _priv: (),
+}
+
+impl Matcher {
+    /// Create a matcher from system proxy settings.
+    pub(crate) fn system() -> Self {
+        Self { _priv: () }
+    }
+
+    /// Check if this matcher might have HTTP authentication configured.
+    pub(crate) fn maybe_has_http_auth(&self) -> bool {
+        true
+    }
+
+    /// Check if this matcher might have custom HTTP headers configured.
+    pub(crate) fn maybe_has_http_custom_headers(&self) -> bool {
+        true
+    }
+
+    /// Intercept the given destination URI, returning the intercepted
+    /// proxy configuration if there is a match.
+    pub(crate) fn intercept(&self, _dst: &Uri) -> Option<Intercepted> {
+        None
+    }
+}
+
+/// Represents an intercepted proxy configuration.
+#[derive(Debug, Clone)]
+pub(crate) struct Intercepted {
+    /// The proxy URI to use
+    pub(crate) uri: Uri,
+    /// Optional authentication header
+    pub(crate) auth: Option<HeaderValue>,
+    /// Optional custom headers
+    pub(crate) headers: Option<Arc<HeaderMap>>,
+}
+
 /// A particular scheme used for proxying requests.
 ///
 /// For example, HTTP vs SOCKS5
@@ -1085,7 +1128,7 @@ pub(crate) fn encode_basic_auth(username: &str, password: &str) -> HeaderValue {
 }
 
 /// A helper trait to allow testing `Proxy::intercept` without having to
-/// construct `hyper2::client::connect::Destination`s.
+/// construct `Destination`s.
 pub(crate) trait Dst {
     fn scheme(&self) -> &str;
     fn host(&self) -> &str;

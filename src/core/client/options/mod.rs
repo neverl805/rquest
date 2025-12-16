@@ -12,7 +12,7 @@ use crate::{proxy::Matcher, tls::TlsOptions};
 ///
 /// This struct allows you to customize protocol-specific and TLS settings
 /// for network connections made by the client.
-#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Default, Clone)]
 #[non_exhaustive]
 pub(crate) struct TransportOptions {
     tls_options: Option<TlsOptions>,
@@ -86,7 +86,7 @@ impl TransportOptions {
 
 /// Per-request configuration for proxy, protocol, and transport options.
 /// Overrides client defaults for a single request.
-#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Default, Clone)]
 #[non_exhaustive]
 pub(crate) struct RequestOptions {
     proxy_matcher: Option<Matcher>,

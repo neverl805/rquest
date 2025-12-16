@@ -6,6 +6,7 @@ mod uds;
 
 pub mod proxy;
 
+use log::debug;
 use std::{
     fmt::{self, Formatter},
     sync::{

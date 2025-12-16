@@ -24,12 +24,15 @@ use std::time::Duration;
 
 use futures_util::future::{self, Either, FutureExt, TryFutureExt};
 use http::uri::Scheme;
-use hyper2::client::conn::TrySendError as ConnTrySendError;
-use hyper2::header::{HOST, HeaderValue};
-use hyper2::rt::Timer;
-use hyper2::{Method, Request, Response, Uri, Version, body::Body};
+use http::header::{HOST, HeaderValue};
+use http::{Method, Request, Response, Uri, Version};
+use http_body::Body;
 use log::{debug, trace, warn};
 use sync_wrapper::SyncWrapper;
+
+use crate::core::client::conn::TrySendError as ConnTrySendError;
+use crate::core::client::body::Incoming as HyperIncoming;
+use crate::core::rt::Timer;
 
 use crate::AlpnProtos;
 use crate::util::common;
@@ -53,8 +56,8 @@ pub struct Client<C, B> {
     config: Config,
     connector: C,
     exec: Exec,
-    h1_builder: hyper2::client::conn::http1::Builder,
-    h2_builder: hyper2::client::conn::http2::Builder<Exec>,
+    h1_builder: crate::core::client::conn::http1::Builder,
+    h2_builder: crate::core::client::conn::http2::Builder<Exec>,
     pool: pool::Pool<PoolClient<B>, PoolKey>,
 }
 
@@ -144,7 +147,7 @@ enum TrySendError<B> {
 }
 
 type ResponseWrapper = SyncWrapper<
-    Pin<Box<dyn Future<Output = Result<Response<hyper2::body::Incoming>, Error>> + Send>>,
+    Pin<Box<dyn Future<Output = Result<Response<HyperIncoming>, Error>> + Send>>,
 >;
 
 /// A `Future` that will resolve to an HTTP Response.
@@ -180,7 +183,7 @@ impl Client<(), ()> {
     /// ```
     pub fn builder<E>(executor: E) -> Builder
     where
-        E: hyper2::rt::Executor<BoxSendFuture> + Send + Sync + Clone + 'static,
+        E: crate::core::rt::Executor<BoxSendFuture> + Send + Sync + Clone + 'static,
     {
         Builder::new(executor)
     }
@@ -200,7 +203,7 @@ where
     /// ```
     /// #
     /// # fn run () {
-    /// use hyper2::{Method, Request};
+    /// use http::{Method, Request};
     /// use crate::util::client::Client;
     /// use http_body_util::Full;
     /// use crate::util::rt::TokioExecutor;
@@ -247,7 +250,7 @@ where
         self,
         mut req: Request<B>,
         dst: Dst,
-    ) -> Result<Response<hyper2::body::Incoming>, Error> {
+    ) -> Result<Response<HyperIncoming>, Error> {
         let uri = req.uri().clone();
 
         loop {
@@ -280,7 +283,7 @@ where
         &self,
         mut req: Request<B>,
         dst: Dst,
-    ) -> Result<Response<hyper2::body::Incoming>, TrySendError<B>> {
+    ) -> Result<Response<HyperIncoming>, TrySendError<B>> {
         let mut pooled = self
             .connection_for(dst)
             .await
@@ -639,7 +642,7 @@ where
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
-    type Response = Response<hyper2::body::Incoming>;
+    type Response = Response<HyperIncoming>;
     type Error = Error;
     type Future = ResponseFuture;
 
@@ -659,7 +662,7 @@ where
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
-    type Response = Response<hyper2::body::Incoming>;
+    type Response = Response<HyperIncoming>;
     type Error = Error;
     type Future = ResponseFuture;
 
@@ -697,7 +700,7 @@ impl<C, B> fmt::Debug for Client<C, B> {
 impl ResponseFuture {
     fn new<F>(value: F) -> Self
     where
-        F: Future<Output = Result<Response<hyper2::body::Incoming>, Error>> + Send + 'static,
+        F: Future<Output = Result<Response<HyperIncoming>, Error>> + Send + 'static,
     {
         Self {
             inner: SyncWrapper::new(Box::pin(value)),
@@ -717,7 +720,7 @@ impl fmt::Debug for ResponseFuture {
 }
 
 impl Future for ResponseFuture {
-    type Output = Result<Response<hyper2::body::Incoming>, Error>;
+    type Output = Result<Response<HyperIncoming>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Self::Output> {
         self.inner.get_mut().as_mut().poll(cx)
@@ -734,9 +737,9 @@ struct PoolClient<B> {
 }
 
 enum PoolTx<B> {
-    Http1(hyper2::client::conn::http1::SendRequest<B>),
+    Http1(crate::core::client::conn::http1::SendRequest<B>),
 
-    Http2(hyper2::client::conn::http2::SendRequest<B>),
+    Http2(crate::core::client::conn::http2::SendRequest<B>),
 }
 
 impl<B> PoolClient<B> {
@@ -780,7 +783,7 @@ impl<B: Body + 'static> PoolClient<B> {
     fn try_send_request(
         &mut self,
         req: Request<B>,
-    ) -> impl Future<Output = Result<Response<hyper2::body::Incoming>, ConnTrySendError<Request<B>>>>
+    ) -> impl Future<Output = Result<Response<HyperIncoming>, ConnTrySendError<Request<B>>>>
     where
         B: Send,
     {
@@ -908,11 +911,11 @@ fn is_schema_secure(uri: &Uri) -> bool {
 /// Http1 part of builder.
 #[derive(Debug)]
 pub struct Http1Builder<'a> {
-    inner: &'a mut hyper2::client::conn::http1::Builder,
+    inner: &'a mut crate::core::client::conn::http1::Builder,
 }
 
 impl Deref for Http1Builder<'_> {
-    type Target = hyper2::client::conn::http1::Builder;
+    type Target = crate::core::client::conn::http1::Builder;
 
     fn deref(&self) -> &Self::Target {
         self.inner
@@ -926,13 +929,18 @@ impl DerefMut for Http1Builder<'_> {
 }
 
 /// Http2 part of builder.
-#[derive(Debug)]
 pub struct Http2Builder<'a> {
-    inner: &'a mut hyper2::client::conn::http2::Builder<Exec>,
+    inner: &'a mut crate::core::client::conn::http2::Builder<Exec>,
+}
+
+impl std::fmt::Debug for Http2Builder<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Http2Builder").finish_non_exhaustive()
+    }
 }
 
 impl Deref for Http2Builder<'_> {
-    type Target = hyper2::client::conn::http2::Builder<Exec>;
+    type Target = crate::core::client::conn::http2::Builder<Exec>;
 
     fn deref(&self) -> &Self::Target {
         self.inner
@@ -971,8 +979,8 @@ pub struct Builder {
     client_config: Config,
     exec: Exec,
 
-    h1_builder: hyper2::client::conn::http1::Builder,
-    h2_builder: hyper2::client::conn::http2::Builder<Exec>,
+    h1_builder: crate::core::client::conn::http1::Builder,
+    h2_builder: crate::core::client::conn::http2::Builder<Exec>,
     pool_config: pool::Config,
     pool_timer: Option<timer::Timer>,
 }
@@ -981,7 +989,7 @@ impl Builder {
     /// Construct a new Builder.
     pub fn new<E>(executor: E) -> Self
     where
-        E: hyper2::rt::Executor<BoxSendFuture> + Send + Sync + Clone + 'static,
+        E: crate::core::rt::Executor<BoxSendFuture> + Send + Sync + Clone + 'static,
     {
         let exec = Exec::new(executor);
         Self {
@@ -992,8 +1000,8 @@ impl Builder {
             },
             exec: exec.clone(),
 
-            h1_builder: hyper2::client::conn::http1::Builder::new(),
-            h2_builder: hyper2::client::conn::http2::Builder::new(exec),
+            h1_builder: crate::core::client::conn::http1::Builder::new(),
+            h2_builder: crate::core::client::conn::http2::Builder::new(exec),
             pool_config: pool::Config {
                 idle_timeout: Some(Duration::from_secs(90)),
                 max_idle_per_host: usize::MAX,
@@ -1212,11 +1220,11 @@ impl Error {
         matches!(self.kind, ErrorKind::Canceled)
     }
 
-    fn tx(src: hyper2::Error) -> Self {
+    fn tx(src: crate::core::Error) -> Self {
         e!(SendRequest, src)
     }
 
-    fn closed(src: hyper2::Error) -> Self {
+    fn closed(src: crate::core::Error) -> Self {
         e!(ChannelClosed, src)
     }
 }

@@ -55,6 +55,46 @@ impl Default for AlpnProtos {
     }
 }
 
+/// A TLS ALPN protocol identifier.
+/// Used for specifying application layer protocol negotiation.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub struct AlpnProtocol(&'static [u8]);
+
+impl AlpnProtocol {
+    /// HTTP/1.1 ALPN protocol
+    pub const HTTP1: AlpnProtocol = AlpnProtocol(b"http/1.1");
+    /// HTTP/2 ALPN protocol
+    pub const HTTP2: AlpnProtocol = AlpnProtocol(b"h2");
+    /// HTTP/3 ALPN protocol
+    pub const HTTP3: AlpnProtocol = AlpnProtocol(b"h3");
+
+    /// Create a new `AlpnProtocol` from a static byte slice.
+    pub const fn new(value: &'static [u8]) -> Self {
+        AlpnProtocol(value)
+    }
+
+    /// Encode this protocol identifier with length prefix.
+    pub fn encode(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(1 + self.0.len());
+        buf.push(self.0.len() as u8);
+        buf.extend_from_slice(self.0);
+        buf
+    }
+
+    /// Encode a sequence of ALPN protocols into a single buffer.
+    pub fn encode_sequence<'a, I>(protocols: I) -> Vec<u8>
+    where
+        I: IntoIterator<Item = &'a AlpnProtocol>,
+    {
+        let mut buf = Vec::new();
+        for protocol in protocols {
+            buf.push(protocol.0.len() as u8);
+            buf.extend_from_slice(protocol.0);
+        }
+        buf
+    }
+}
+
 /// Application-layer protocol settings for HTTP/1.1 and HTTP/2.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AlpsProtos(&'static [u8]);

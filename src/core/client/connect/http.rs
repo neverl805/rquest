@@ -13,6 +13,7 @@ use std::{
 
 use futures_util::future::Either;
 use http::uri::{Scheme, Uri};
+use log::warn;
 use pin_project_lite::pin_project;
 use socket2::TcpKeepalive;
 use tokio::{
@@ -23,7 +24,7 @@ use tokio::{
 use super::{Connected, Connection};
 use crate::{
     core::BoxError,
-    dns::{self, GaiResolver, InternalResolve, resolve},
+    dns::{self, GaiResolver, HyperName, InternalResolve, resolve},
 };
 
 /// A connector for the `http` scheme.
@@ -293,26 +294,29 @@ impl TcpKeepaliveConfig {
         //
         // Set the maximum number of TCP keepalive probes that will be sent before
         // dropping a connection, if TCP keepalive is enabled on this socket.
-        #[cfg(any(
-            target_os = "android",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "fuchsia",
-            target_os = "illumos",
-            target_os = "ios",
-            target_os = "visionos",
-            target_os = "linux",
-            target_os = "macos",
-            target_os = "netbsd",
-            target_os = "tvos",
-            target_os = "watchos",
-            target_os = "cygwin",
-            target_os = "windows",
-        ))]
-        if let Some(retries) = self.retries {
-            dirty = true;
-            ka = ka.with_retries(retries)
-        };
+        // Note: with_retries is not available in socket2 0.5.x
+        // TODO: Re-enable when socket2 is updated or use platform-specific API
+        // #[cfg(any(
+        //     target_os = "android",
+        //     target_os = "dragonfly",
+        //     target_os = "freebsd",
+        //     target_os = "fuchsia",
+        //     target_os = "illumos",
+        //     target_os = "ios",
+        //     target_os = "visionos",
+        //     target_os = "linux",
+        //     target_os = "macos",
+        //     target_os = "netbsd",
+        //     target_os = "tvos",
+        //     target_os = "watchos",
+        //     target_os = "cygwin",
+        //     target_os = "windows",
+        // ))]
+        // if let Some(retries) = self.retries {
+        //     dirty = true;
+        //     ka = ka.with_retries(retries)
+        // };
+        let _ = self.retries; // Silence unused warning
 
         if dirty { Some(ka) } else { None }
     }
@@ -592,7 +596,7 @@ where
         let addrs = if let Some(addrs) = dns::SocketAddrs::try_parse(host, port) {
             addrs
         } else {
-            let addrs = resolve(&mut self.resolver, dns::Name::new(host.into()))
+            let addrs = resolve(&mut self.resolver, HyperName::new(host.into()))
                 .await
                 .map_err(ConnectError::dns)?;
             let addrs = addrs

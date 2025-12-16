@@ -14,7 +14,7 @@ use tokio_socks::{
 };
 use tower::Service;
 
-use crate::dns::{GaiResolver, InternalResolve, Name};
+use crate::dns::{GaiResolver, HyperName as Name, InternalResolve};
 
 #[derive(Debug)]
 pub enum SocksError<C> {

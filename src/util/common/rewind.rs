@@ -1,7 +1,7 @@
 use std::{cmp, io};
 
 use bytes::{Buf, Bytes};
-use hyper2::rt::{Read, ReadBufCursor, Write};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use std::{
     pin::Pin,
@@ -15,21 +15,21 @@ pub(crate) struct Rewind<T> {
     pub(crate) inner: T,
 }
 
-impl<T> Read for Rewind<T>
+impl<T> AsyncRead for Rewind<T>
 where
-    T: Read + Unpin,
+    T: AsyncRead + Unpin,
 {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut task::Context<'_>,
-        mut buf: ReadBufCursor<'_>,
+        buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
         if let Some(mut prefix) = self.pre.take() {
             // If there are no remaining bytes, let the bytes get dropped.
             if !prefix.is_empty() {
-                let copy_len = cmp::min(prefix.len(), remaining(&mut buf));
+                let copy_len = cmp::min(prefix.len(), buf.remaining());
                 // TODO: There should be a way to do following two lines cleaner...
-                put_slice(&mut buf, &prefix[..copy_len]);
+                buf.put_slice(&prefix[..copy_len]);
                 prefix.advance(copy_len);
                 // Put back what's left
                 if !prefix.is_empty() {
@@ -43,36 +43,9 @@ where
     }
 }
 
-fn remaining(cursor: &mut ReadBufCursor<'_>) -> usize {
-    // SAFETY:
-    // We do not uninitialize any set bytes.
-    unsafe { cursor.as_mut().len() }
-}
-
-// Copied from `ReadBufCursor::put_slice`.
-// If that becomes public, we could ditch this.
-fn put_slice(cursor: &mut ReadBufCursor<'_>, slice: &[u8]) {
-    assert!(
-        remaining(cursor) >= slice.len(),
-        "buf.len() must fit in remaining()"
-    );
-
-    let amt = slice.len();
-
-    // SAFETY:
-    // the length is asserted above
-    unsafe {
-        cursor.as_mut()[..amt]
-            .as_mut_ptr()
-            .cast::<u8>()
-            .copy_from_nonoverlapping(slice.as_ptr(), amt);
-        cursor.advance(amt);
-    }
-}
-
-impl<T> Write for Rewind<T>
+impl<T> AsyncWrite for Rewind<T>
 where
-    T: Write + Unpin,
+    T: AsyncWrite + Unpin,
 {
     #[inline(always)]
     fn poll_write(

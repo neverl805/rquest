@@ -56,7 +56,7 @@ pub struct GaiFuture {
 }
 
 impl Name {
-    pub(super) fn new(host: Box<str>) -> Name {
+    pub(crate) fn new(host: Box<str>) -> Name {
         Name { host }
     }
 
@@ -183,18 +183,18 @@ impl fmt::Debug for GaiAddrs {
     }
 }
 
-pub(super) struct SocketAddrs {
+pub(crate) struct SocketAddrs {
     iter: vec::IntoIter<SocketAddr>,
 }
 
 impl SocketAddrs {
-    pub(super) fn new(addrs: Vec<SocketAddr>) -> Self {
+    pub(crate) fn new(addrs: Vec<SocketAddr>) -> Self {
         SocketAddrs {
             iter: addrs.into_iter(),
         }
     }
 
-    pub(super) fn try_parse(host: &str, port: u16) -> Option<SocketAddrs> {
+    pub(crate) fn try_parse(host: &str, port: u16) -> Option<SocketAddrs> {
         if let Ok(addr) = host.parse::<Ipv4Addr>() {
             let addr = SocketAddrV4::new(addr, port);
             return Some(SocketAddrs {
@@ -215,7 +215,7 @@ impl SocketAddrs {
         SocketAddrs::new(self.iter.filter(predicate).collect())
     }
 
-    pub(super) fn split_by_preference(
+    pub(crate) fn split_by_preference(
         self,
         local_addr_ipv4: Option<Ipv4Addr>,
         local_addr_ipv6: Option<Ipv6Addr>,
@@ -240,11 +240,11 @@ impl SocketAddrs {
         }
     }
 
-    pub(super) fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.iter.as_slice().is_empty()
     }
 
-    pub(super) fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.iter.as_slice().len()
     }
 }
@@ -257,7 +257,7 @@ impl Iterator for SocketAddrs {
     }
 }
 
-mod sealed {
+pub(crate) mod sealed {
     use std::future::Future;
     use std::task::{self, Poll};
 
@@ -294,9 +294,9 @@ mod sealed {
     }
 }
 
-pub(super) async fn resolve<R>(resolver: &mut R, name: Name) -> Result<R::Addrs, R::Error>
+pub(crate) async fn resolve<R>(resolver: &mut R, name: Name) -> Result<R::Addrs, R::Error>
 where
-    R: Resolve,
+    R: sealed::Resolve,
 {
     future::poll_fn(|cx| resolver.poll_ready(cx)).await?;
     resolver.resolve(name).await

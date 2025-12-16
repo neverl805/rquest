@@ -229,6 +229,45 @@ impl Default for TlsConfig {
     }
 }
 
+impl Clone for TlsConfig {
+    fn clone(&self) -> Self {
+        TlsConfig {
+            cert_store: self.cert_store.clone(),
+            cert_verification: self.cert_verification,
+            tls_sni: self.tls_sni,
+            verify_hostname: self.verify_hostname,
+            alpn_protos: self.alpn_protos,
+            alps_protos: self.alps_protos,
+            alps_use_new_codepoint: self.alps_use_new_codepoint,
+            session_ticket: self.session_ticket,
+            min_tls_version: self.min_tls_version,
+            max_tls_version: self.max_tls_version,
+            pre_shared_key: self.pre_shared_key,
+            enable_ech_grease: self.enable_ech_grease,
+            permute_extensions: self.permute_extensions,
+            grease_enabled: self.grease_enabled,
+            enable_ocsp_stapling: self.enable_ocsp_stapling,
+            enable_signed_cert_timestamps: self.enable_signed_cert_timestamps,
+            record_size_limit: self.record_size_limit,
+            psk_skip_session_ticket: self.psk_skip_session_ticket,
+            key_shares_limit: self.key_shares_limit,
+            psk_dhe_ke: self.psk_dhe_ke,
+            renegotiation: self.renegotiation,
+            delegated_credentials: self.delegated_credentials.clone(),
+            cipher_list: self.cipher_list.clone(),
+            curves: self.curves.clone(),
+            curves_list: self.curves_list.clone(),
+            sigalgs_list: self.sigalgs_list.clone(),
+            cert_compression_algorithm: self.cert_compression_algorithm.clone(),
+            extension_permutation_indices: self.extension_permutation_indices.clone(),
+            extension_permutation: self.extension_permutation.clone(),
+            aes_hw_override: self.aes_hw_override,
+            random_aes_hw_override: self.random_aes_hw_override,
+            preserve_tls13_cipher_list: self.preserve_tls13_cipher_list,
+        }
+    }
+}
+
 /// A trait for converting various types into an optional `Cow` containing a `CertStore`.
 ///
 /// This trait is used to provide a unified way to convert different types

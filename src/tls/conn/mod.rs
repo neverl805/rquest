@@ -13,7 +13,7 @@ use boring2::error::ErrorStack;
 use boring2::ex_data::Index;
 use boring2::ssl::Ssl;
 use cache::SessionKey;
-use hyper2::rt::{Read, ReadBufCursor, Write};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use std::fmt;
 use std::io::IoSlice;
 use std::pin::Pin;
@@ -108,12 +108,12 @@ where
     }
 }
 
-impl<T: Read + Write + Unpin> Read for MaybeHttpsStream<T> {
+impl<T: AsyncRead + AsyncWrite + Unpin> AsyncRead for MaybeHttpsStream<T> {
     #[inline]
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context,
-        buf: ReadBufCursor<'_>,
+        buf: &mut ReadBuf<'_>,
     ) -> Poll<Result<(), io::Error>> {
         match Pin::get_mut(self) {
             MaybeHttpsStream::Http(s) => Pin::new(s).poll_read(cx, buf),
@@ -122,7 +122,7 @@ impl<T: Read + Write + Unpin> Read for MaybeHttpsStream<T> {
     }
 }
 
-impl<T: Write + Read + Unpin> Write for MaybeHttpsStream<T> {
+impl<T: AsyncWrite + AsyncRead + Unpin> AsyncWrite for MaybeHttpsStream<T> {
     #[inline]
     fn poll_write(
         self: Pin<&mut Self>,

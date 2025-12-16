@@ -190,7 +190,7 @@ where
             *this.is_terminated = true;
         }
         polled.map_err(|_e| {
-            debug!(error = %_e, "connection error");
+            debug!("connection error: {}", _e);
         })
     }
 }

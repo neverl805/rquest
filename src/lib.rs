@@ -276,18 +276,28 @@
 //! [Proxy]: ./struct.Proxy.html
 //! [cargo-features]: https://doc.rust-lang.org/stable/cargo/reference/manifest.html#the-features-section
 
+#[macro_use]
+extern crate log;
+
 #[cfg(feature = "hickory-dns")]
 pub use hickory_resolver;
 pub use http::Method;
-pub use http::header;
 pub use http::{StatusCode, Version};
 pub use url::Url;
+
+// Newtype wrapper for inserting values into http::Extensions
+#[derive(Clone, Debug)]
+pub(crate) struct Extension<T>(pub T);
 
 // universal mods
 #[macro_use]
 mod error;
+pub(crate) mod core;
+pub(crate) mod hash;
+pub mod header;
 mod into_url;
 mod response;
+pub(crate) mod sync;
 
 pub use self::error::{Error, Result};
 pub use self::into_url::IntoUrl;

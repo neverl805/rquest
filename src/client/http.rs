@@ -13,6 +13,8 @@ use crate::connect::{
     BoxedConnectorLayer, BoxedConnectorService, Connector, ConnectorBuilder,
     sealed::{Conn, Unnameable},
 };
+// h2 types for HTTP/2 settings
+use h2::ext::Protocol as H2Protocol;
 #[cfg(any(feature = "cookies", feature = "cookies-abstract"))]
 use crate::cookie;
 #[cfg(feature = "hickory-dns")]
@@ -28,7 +30,7 @@ use crate::util::{
         Builder, Client as HyperClient, Http1Builder, Http2Builder, InnerRequest, NetworkScheme,
         NetworkSchemeBuilder, connect::HttpConnector,
     },
-    rt::{TokioExecutor, tokio::TokioTimer},
+    rt::{TokioExecutor, TokioTimer},
 };
 use crate::{CertStore, Http1Config, Http2Config, TlsConfig, error};
 use crate::{IntoUrl, Method, Proxy, StatusCode, Url};
@@ -2373,11 +2375,11 @@ fn is_retryable_error(err: &(dyn std::error::Error + 'static)) -> bool {
     };
 
     if let Some(cause) = err.source() {
-        if let Some(err) = cause.downcast_ref::<hyper2::h2::Error>() {
+        if let Some(err) = cause.downcast_ref::<h2::Error>() {
             // They sent us a graceful shutdown, try with a new connection!
             if err.is_go_away()
                 && err.is_remote()
-                && err.reason() == Some(hyper2::h2::Reason::NO_ERROR)
+                && err.reason() == Some(h2::Reason::NO_ERROR)
             {
                 return true;
             }
@@ -2386,7 +2388,7 @@ fn is_retryable_error(err: &(dyn std::error::Error + 'static)) -> bool {
             // https://www.rfc-editor.org/rfc/rfc9113.html#section-8.7-3.2
             if err.is_reset()
                 && err.is_remote()
-                && err.reason() == Some(hyper2::h2::Reason::REFUSED_STREAM)
+                && err.reason() == Some(h2::Reason::REFUSED_STREAM)
             {
                 return true;
             }
@@ -2451,57 +2453,48 @@ fn add_accpet_encoding_header(accepts: &Accepts, headers: &mut HeaderMap) {
 }
 
 fn apply_http1_config(mut builder: Http1Builder<'_>, http1: Http1Config) {
-    builder
-        .http09_responses(http1.http09_responses)
-        .max_headers(http1.max_headers)
-        .max_buf_size(http1.max_buf_size)
-        .read_buf_exact_size(http1.read_buf_exact_size)
-        .preserve_header_case(http1.preserve_header_case)
-        .title_case_headers(http1.title_case_headers)
-        .ignore_invalid_headers_in_responses(http1.ignore_invalid_headers_in_responses)
-        .allow_spaces_after_header_name_in_responses(
-            http1.allow_spaces_after_header_name_in_responses,
-        )
-        .allow_obsolete_multiline_headers_in_responses(
-            http1.allow_obsolete_multiline_headers_in_responses,
-        );
+    use crate::core::client::options::http1::Http1Options;
 
-    if let Some(writev) = http1.writev {
-        builder.writev(writev);
-    }
+    let opts = Http1Options {
+        h09_responses: http1.http09_responses,
+        h1_writev: http1.writev,
+        h1_max_headers: Some(http1.max_headers),
+        h1_read_buf_exact_size: http1.read_buf_exact_size,
+        h1_max_buf_size: Some(http1.max_buf_size),
+        ignore_invalid_headers_in_responses: http1.ignore_invalid_headers_in_responses,
+        allow_spaces_after_header_name_in_responses: http1.allow_spaces_after_header_name_in_responses,
+        allow_obsolete_multiline_headers_in_responses: http1.allow_obsolete_multiline_headers_in_responses,
+    };
+    builder.options(opts);
 }
 
 fn apply_http2_config(mut builder: Http2Builder<'_>, http2: Http2Config) {
-    // Note: Headers priority, pseudo order, settings order, and priorities
-    // are handled at the core layer (http2::client::Builder), not here at the util layer (hyper2::Builder)
+    use crate::core::client::options::http2::Http2Options;
 
-    builder
-        .initial_stream_id(http2.initial_stream_id)
-        .initial_stream_window_size(http2.initial_stream_window_size)
-        .initial_connection_window_size(http2.initial_connection_window_size)
-        .max_concurrent_streams(http2.max_concurrent_streams)
-        .header_table_size(http2.header_table_size)
-        .max_frame_size(http2.max_frame_size);
-
-    if let Some(max_header_list_size) = http2.max_header_list_size {
-        builder.max_header_list_size(max_header_list_size);
-    }
-
-    if let Some(enable_push) = http2.enable_push {
-        builder.enable_push(enable_push);
-    }
-
-    // Map enable_connect_protocol to unknown_setting8 (SETTINGS_ENABLE_CONNECT_PROTOCOL)
-    if let Some(enable_connect_protocol) = http2.enable_connect_protocol {
-        builder.unknown_setting8(enable_connect_protocol);
-    } else if let Some(unknown_setting8) = http2.unknown_setting8 {
-        builder.unknown_setting8(unknown_setting8);
-    }
-
-    // Map no_rfc7540_priorities to unknown_setting9 (SETTINGS_NO_RFC7540_PRIORITIES)
-    if let Some(no_rfc7540_priorities) = http2.no_rfc7540_priorities {
-        builder.unknown_setting9(no_rfc7540_priorities);
-    } else if let Some(unknown_setting9) = http2.unknown_setting9 {
-        builder.unknown_setting9(unknown_setting9);
-    }
+    let opts = Http2Options {
+        adaptive_window: false,
+        initial_stream_id: http2.initial_stream_id,
+        initial_conn_window_size: http2.initial_connection_window_size.unwrap_or(1024 * 1024 * 5),
+        initial_window_size: http2.initial_stream_window_size.unwrap_or(1024 * 1024 * 2),
+        initial_max_send_streams: 100,
+        max_frame_size: http2.max_frame_size,
+        keep_alive_interval: None,
+        keep_alive_timeout: std::time::Duration::from_secs(20),
+        keep_alive_while_idle: false,
+        max_concurrent_reset_streams: None,
+        max_send_buffer_size: 1024 * 1024,
+        max_concurrent_streams: http2.max_concurrent_streams,
+        max_header_list_size: http2.max_header_list_size,
+        max_pending_accept_reset_streams: None,
+        enable_push: http2.enable_push,
+        header_table_size: http2.header_table_size,
+        enable_connect_protocol: http2.enable_connect_protocol,
+        no_rfc7540_priorities: http2.no_rfc7540_priorities,
+        headers_pseudo_order: http2.headers_pseudo_order,
+        headers_stream_dependency: http2.headers_stream_dependency,
+        experimental_settings: http2.experimental_settings,
+        settings_order: http2.settings_order,
+        priorities: http2.priorities,
+    };
+    builder.options(opts);
 }

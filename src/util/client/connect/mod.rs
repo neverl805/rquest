@@ -60,8 +60,8 @@
 //! [`HttpConnector`]: HttpConnector
 //! [`Service`]: tower_service::Service
 //! [`Uri`]: ::http::Uri
-//! [`Read`]: hyper2::rt::Read
-//! [`Write`]: hyper2::rt::Write
+//! [`Read`]: tokio::io::AsyncRead
+//! [`Write`]: tokio::io::AsyncWrite
 //! [`Connection`]: Connection
 use std::{
     fmt::{self, Formatter},
@@ -308,7 +308,7 @@ pub(super) mod sealed {
     use std::future::Future;
 
     use ::http::Uri;
-    use hyper2::rt::{Read, Write};
+    use tokio::io::{AsyncRead, AsyncWrite};
 
     use crate::util::{client::Dst, service};
 
@@ -334,7 +334,7 @@ pub(super) mod sealed {
     }
 
     pub trait ConnectSvc {
-        type Connection: Read + Write + Connection + Unpin + Send + 'static;
+        type Connection: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static;
         type Error: Into<Box<dyn StdError + Send + Sync>>;
         type Future: Future<Output = Result<Self::Connection, Self::Error>> + Unpin + Send + 'static;
 
@@ -346,7 +346,7 @@ pub(super) mod sealed {
         S: tower_service::Service<Dst, Response = T> + Send + 'static,
         S::Error: Into<Box<dyn StdError + Send + Sync>>,
         S::Future: Unpin + Send,
-        T: Read + Write + Connection + Unpin + Send + 'static,
+        T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
     {
         type _Svc = S;
 
@@ -360,7 +360,7 @@ pub(super) mod sealed {
         S: tower_service::Service<Dst, Response = T> + Send + 'static,
         S::Error: Into<Box<dyn StdError + Send + Sync>>,
         S::Future: Unpin + Send,
-        T: Read + Write + Connection + Unpin + Send + 'static,
+        T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
     {
         type Connection = T;
         type Error = S::Error;
@@ -376,7 +376,7 @@ pub(super) mod sealed {
         S: tower_service::Service<Dst, Response = T> + Send,
         S::Error: Into<Box<dyn StdError + Send + Sync>>,
         S::Future: Unpin + Send,
-        T: Read + Write + Connection + Unpin + Send + 'static,
+        T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
     {
     }
 

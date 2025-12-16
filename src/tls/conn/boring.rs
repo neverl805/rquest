@@ -18,7 +18,7 @@ use boring2::ssl::{
 };
 use http::Uri;
 use http::uri::Scheme;
-use hyper2::rt::{Read, Write};
+use tokio::io::{AsyncRead, AsyncWrite};
 
 use tokio_boring2::SslStream;
 use tower_service::Service;
@@ -85,7 +85,7 @@ where
     S: Service<Uri, Response = T> + Send,
     S::Error: Into<Box<dyn Error + Send + Sync>>,
     S::Future: Unpin + Send + 'static,
-    T: Read + Write + Connection + Unpin + Debug + Sync + Send + 'static,
+    T: AsyncRead + AsyncWrite + Connection + Unpin + Debug + Sync + Send + 'static,
 {
     /// Creates a new `HttpsConnector` with a given `HttpConnector`
     pub fn with_connector(http: S, connector: TlsConnector) -> HttpsConnector<S> {
@@ -117,7 +117,7 @@ where
         conn: A,
     ) -> Result<SslStream<TokioIo<A>>, BoxError>
     where
-        A: Read + Write + Unpin + Send + Sync + Debug + 'static,
+        A: AsyncRead + AsyncWrite + Unpin + Send + Sync + Debug + 'static,
     {
         self.inner.connect(uri, host, conn).await
     }
@@ -315,7 +315,7 @@ impl Inner {
         conn: A,
     ) -> Result<SslStream<TokioIo<A>>, BoxError>
     where
-        A: Read + Write + Unpin + Send + Sync + Debug + 'static,
+        A: AsyncRead + AsyncWrite + Unpin + Send + Sync + Debug + 'static,
     {
         let ssl = self.setup_ssl(uri, host)?;
         tokio_boring2::SslStreamBuilder::new(ssl, TokioIo::new(conn))
@@ -365,7 +365,7 @@ where
     S: Service<Uri, Response = T> + Send,
     S::Error: Into<Box<dyn Error + Send + Sync>>,
     S::Future: Unpin + Send + 'static,
-    T: Read + Write + Connection + Unpin + Debug + Sync + Send + 'static,
+    T: AsyncRead + AsyncWrite + Connection + Unpin + Debug + Sync + Send + 'static,
 {
     type Response = MaybeHttpsStream<T>;
     type Error = Box<dyn Error + Sync + Send>;

@@ -7,3 +7,6 @@ pub mod ext;
 pub mod rt;
 
 pub use self::error::{BoxError, Error, Result};
+
+// Re-export upgrade module for client usage
+pub use self::client::upgrade;

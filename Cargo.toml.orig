@@ -76,7 +76,7 @@ macos-system-configuration = ["dep:system-configuration"]
 apple-network-device-binding = ["dep:libc"]
 
 # Optional enable http2 tracing
-http2-tracing = ["hyper2/http2-tracing"]
+http2-tracing = ["http2/tracing"]
 
 # Optional disable internal proxy cache
 internal_proxy_sys_no_cache = []
@@ -107,13 +107,16 @@ encoding_rs = { version = "0.8", optional = true }
 http-body = "1"
 http-body-util = "0.1"
 http2 = { path = "../http2", features = ["unstable"] }
-hyper2 = { version = "1.5.5", features = ["http1", "http2", "client"] }
+httparse = "1.10.1"
+futures-channel = "0.3.31"
+want = "0.3.1"
+smallvec = { version = "1.15.1", features = ["const_generics", "const_new"] }
 socket2 = { version = "0.5.8", features = ["all"] }
 lru = { version = "0.13", default-features = false }
 log = "0.4.27"
 mime = "0.3.17"
 percent-encoding = "2.3"
-tokio = { version = "1", default-features = false, features = ["net","time","rt"] }
+tokio = { version = "1", default-features = false, features = ["net","time","rt","sync"] }
 pin-project-lite = "0.2.0"
 ipnet = "2.11.0"
 arc-swap = "1.7.0"

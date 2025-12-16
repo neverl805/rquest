@@ -33,6 +33,7 @@ use std::{
 };
 
 use bytes::Bytes;
+use log::trace;
 use tokio::{
     io::{AsyncRead, AsyncWrite, ReadBuf},
     sync::oneshot,

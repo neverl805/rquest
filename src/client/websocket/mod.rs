@@ -16,7 +16,7 @@ use std::{
 use crate::{Error, RequestBuilder, Response, error, proxy::IntoProxy};
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Version, header, uri::Scheme};
-use hyper2::ext::Protocol;
+use crate::core::ext::Protocol;
 use serde::Serialize;
 use tokio_tungstenite::tungstenite::{self, protocol};
 use tungstenite::protocol::WebSocketConfig;

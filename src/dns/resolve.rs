@@ -38,6 +38,11 @@ pub trait Resolve: Send + Sync {
 pub struct Name(pub(super) HyperName);
 
 impl Name {
+    /// Create a new Name from a host string.
+    pub(crate) fn new(host: Box<str>) -> Name {
+        Name(HyperName::new(host))
+    }
+
     /// View the name as a string.
     pub fn as_str(&self) -> &str {
         self.0.as_str()

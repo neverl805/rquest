@@ -6,6 +6,7 @@ use std::{
 
 use http::{Request, Response};
 use http_body::Body;
+use log::trace;
 use pin_project_lite::pin_project;
 use tokio::sync::{mpsc, oneshot};
 

@@ -5,7 +5,7 @@ use crate::util::client::connect::{Connected, Connection};
 use crate::util::rt::TokioIo;
 use crate::util::{self, into_uri};
 use http::uri::Scheme;
-use hyper2::rt::{Read, ReadBufCursor, Write};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use pin_project_lite::pin_project;
 use sealed::{Conn, Unnameable};
 use tokio_boring2::SslStream;
@@ -440,11 +440,11 @@ impl TlsInfoFactory for MaybeHttpsStream<TokioIo<tokio::net::TcpStream>> {
 }
 
 pub(crate) trait AsyncConn:
-    Read + Write + Connection + Send + Sync + Unpin + 'static
+    AsyncRead + AsyncWrite + Connection + Send + Sync + Unpin + 'static
 {
 }
 
-impl<T: Read + Write + Connection + Send + Sync + Unpin + 'static> AsyncConn for T {}
+impl<T: AsyncRead + AsyncWrite + Connection + Send + Sync + Unpin + 'static> AsyncConn for T {}
 
 trait AsyncConnWithInfo: AsyncConn + TlsInfoFactory {}
 
@@ -489,25 +489,25 @@ pub(crate) mod sealed {
         }
     }
 
-    impl Read for Conn {
+    impl AsyncRead for Conn {
         fn poll_read(
             self: Pin<&mut Self>,
             cx: &mut Context,
-            buf: ReadBufCursor<'_>,
+            buf: &mut ReadBuf<'_>,
         ) -> Poll<io::Result<()>> {
             let this = self.project();
-            Read::poll_read(this.inner, cx, buf)
+            AsyncRead::poll_read(this.inner, cx, buf)
         }
     }
 
-    impl Write for Conn {
+    impl AsyncWrite for Conn {
         fn poll_write(
             self: Pin<&mut Self>,
             cx: &mut Context,
             buf: &[u8],
         ) -> Poll<Result<usize, io::Error>> {
             let this = self.project();
-            Write::poll_write(this.inner, cx, buf)
+            AsyncWrite::poll_write(this.inner, cx, buf)
         }
 
         fn poll_write_vectored(
@@ -516,7 +516,7 @@ pub(crate) mod sealed {
             bufs: &[IoSlice<'_>],
         ) -> Poll<Result<usize, io::Error>> {
             let this = self.project();
-            Write::poll_write_vectored(this.inner, cx, bufs)
+            AsyncWrite::poll_write_vectored(this.inner, cx, bufs)
         }
 
         fn is_write_vectored(&self) -> bool {
@@ -525,12 +525,12 @@ pub(crate) mod sealed {
 
         fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), io::Error>> {
             let this = self.project();
-            Write::poll_flush(this.inner, cx)
+            AsyncWrite::poll_flush(this.inner, cx)
         }
 
         fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), io::Error>> {
             let this = self.project();
-            Write::poll_shutdown(this.inner, cx)
+            AsyncWrite::poll_shutdown(this.inner, cx)
         }
     }
 }
@@ -546,7 +546,6 @@ mod tls_conn {
             rt::TokioIo,
         },
     };
-    use hyper2::rt::{Read, ReadBufCursor, Write};
     use pin_project_lite::pin_project;
     use std::{
         io::{self, IoSlice},
@@ -554,7 +553,7 @@ mod tls_conn {
         task::{Context, Poll},
     };
     use tokio::{
-        io::{AsyncRead, AsyncWrite},
+        io::{AsyncRead, AsyncWrite, ReadBuf},
         net::TcpStream,
     };
     use tokio_boring2::SslStream;
@@ -587,25 +586,25 @@ mod tls_conn {
         }
     }
 
-    impl<T: AsyncRead + AsyncWrite + Unpin> Read for BoringTlsConn<T> {
+    impl<T: AsyncRead + AsyncWrite + Unpin> AsyncRead for BoringTlsConn<T> {
         fn poll_read(
             self: Pin<&mut Self>,
             cx: &mut Context,
-            buf: ReadBufCursor<'_>,
+            buf: &mut ReadBuf<'_>,
         ) -> Poll<tokio::io::Result<()>> {
             let this = self.project();
-            Read::poll_read(this.inner, cx, buf)
+            AsyncRead::poll_read(this.inner, cx, buf)
         }
     }
 
-    impl<T: AsyncRead + AsyncWrite + Unpin> Write for BoringTlsConn<T> {
+    impl<T: AsyncRead + AsyncWrite + Unpin> AsyncWrite for BoringTlsConn<T> {
         fn poll_write(
             self: Pin<&mut Self>,
             cx: &mut Context,
             buf: &[u8],
         ) -> Poll<Result<usize, tokio::io::Error>> {
             let this = self.project();
-            Write::poll_write(this.inner, cx, buf)
+            AsyncWrite::poll_write(this.inner, cx, buf)
         }
 
         fn poll_write_vectored(
@@ -614,7 +613,7 @@ mod tls_conn {
             bufs: &[IoSlice<'_>],
         ) -> Poll<Result<usize, io::Error>> {
             let this = self.project();
-            Write::poll_write_vectored(this.inner, cx, bufs)
+            AsyncWrite::poll_write_vectored(this.inner, cx, bufs)
         }
 
         fn is_write_vectored(&self) -> bool {
@@ -626,7 +625,7 @@ mod tls_conn {
             cx: &mut Context,
         ) -> Poll<Result<(), tokio::io::Error>> {
             let this = self.project();
-            Write::poll_flush(this.inner, cx)
+            AsyncWrite::poll_flush(this.inner, cx)
         }
 
         fn poll_shutdown(
@@ -634,7 +633,7 @@ mod tls_conn {
             cx: &mut Context,
         ) -> Poll<Result<(), tokio::io::Error>> {
             let this = self.project();
-            Write::poll_shutdown(this.inner, cx)
+            AsyncWrite::poll_shutdown(this.inner, cx)
         }
     }
 
@@ -652,9 +651,8 @@ mod tunnel {
     use super::BoxError;
     use crate::util::rt::TokioIo;
     use http::{HeaderMap, HeaderValue};
-    use hyper2::rt::{Read, Write};
     use std::sync::Arc;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::{AsyncRead, AsyncWrite, AsyncReadExt, AsyncWriteExt};
 
     const USER_AGENT: HeaderValue = HeaderValue::from_static(concat!(
         env!("CARGO_PKG_NAME"),
@@ -670,7 +668,7 @@ mod tunnel {
         headers: Option<Arc<HeaderMap>>,
     ) -> Result<T, BoxError>
     where
-        T: Read + Write + Unpin,
+        T: AsyncRead + AsyncWrite + Unpin,
     {
         let mut buf = format!(
             "\
@@ -824,7 +822,7 @@ mod socks {
 
 mod verbose {
     use crate::util::client::connect::{Connected, Connection};
-    use hyper2::rt::{Read, ReadBufCursor, Write};
+    use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
     use std::cmp::min;
     use std::fmt;
     use std::io::{self, IoSlice};
@@ -855,31 +853,21 @@ mod verbose {
         inner: T,
     }
 
-    impl<T: Connection + Read + Write + Unpin> Connection for Verbose<T> {
+    impl<T: Connection + AsyncRead + AsyncWrite + Unpin> Connection for Verbose<T> {
         fn connected(&self) -> Connected {
             self.inner.connected()
         }
     }
 
-    impl<T: Read + Write + Unpin> Read for Verbose<T> {
+    impl<T: AsyncRead + AsyncWrite + Unpin> AsyncRead for Verbose<T> {
         fn poll_read(
             mut self: Pin<&mut Self>,
             cx: &mut Context,
-            mut buf: ReadBufCursor<'_>,
+            buf: &mut ReadBuf<'_>,
         ) -> Poll<std::io::Result<()>> {
-            // TODO: This _does_ forget the `init` len, so it could result in
-            // re-initializing twice. Needs upstream support, perhaps.
-            // SAFETY: Passing to a ReadBuf will never de-initialize any bytes.
-            let mut vbuf = hyper2::rt::ReadBuf::uninit(unsafe { buf.as_mut() });
-            match Pin::new(&mut self.inner).poll_read(cx, vbuf.unfilled()) {
+            match Pin::new(&mut self.inner).poll_read(cx, buf) {
                 Poll::Ready(Ok(())) => {
-                    log::trace!("{:08x} read: {:?}", self.id, Escape(vbuf.filled()));
-                    let len = vbuf.filled().len();
-                    // SAFETY: The two cursors were for the same buffer. What was
-                    // filled in one is safe in the other.
-                    unsafe {
-                        buf.advance(len);
-                    }
+                    log::trace!("{:08x} read: {:?}", self.id, Escape(buf.filled()));
                     Poll::Ready(Ok(()))
                 }
                 Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
@@ -888,7 +876,7 @@ mod verbose {
         }
     }
 
-    impl<T: Read + Write + Unpin> Write for Verbose<T> {
+    impl<T: AsyncRead + AsyncWrite + Unpin> AsyncWrite for Verbose<T> {
         fn poll_write(
             mut self: Pin<&mut Self>,
             cx: &mut Context,

@@ -325,6 +325,17 @@ mod upgrades {
         pub(super) inner: Option<Connection<T, B>>,
     }
 
+    impl<T, B> std::fmt::Debug for UpgradeableConnection<T, B>
+    where
+        T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+        B: Body + 'static,
+        B::Error: Into<BoxError>,
+    {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("UpgradeableConnection").finish_non_exhaustive()
+        }
+    }
+
     impl<I, B> Future for UpgradeableConnection<I, B>
     where
         I: AsyncRead + AsyncWrite + Unpin + Send + 'static,
