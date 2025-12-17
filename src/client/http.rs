@@ -13,8 +13,8 @@ use crate::connect::{
     BoxedConnectorLayer, BoxedConnectorService, Connector, ConnectorBuilder,
     sealed::{Conn, Unnameable},
 };
-// h2 types for HTTP/2 settings
-use h2::ext::Protocol as H2Protocol;
+// http2 types for HTTP/2 settings
+use http2::ext::Protocol as H2Protocol;
 #[cfg(any(feature = "cookies", feature = "cookies-abstract"))]
 use crate::cookie;
 #[cfg(feature = "hickory-dns")]
@@ -2375,11 +2375,11 @@ fn is_retryable_error(err: &(dyn std::error::Error + 'static)) -> bool {
     };
 
     if let Some(cause) = err.source() {
-        if let Some(err) = cause.downcast_ref::<h2::Error>() {
+        if let Some(err) = cause.downcast_ref::<http2::Error>() {
             // They sent us a graceful shutdown, try with a new connection!
             if err.is_go_away()
                 && err.is_remote()
-                && err.reason() == Some(h2::Reason::NO_ERROR)
+                && err.reason() == Some(http2::Reason::NO_ERROR)
             {
                 return true;
             }
@@ -2388,7 +2388,7 @@ fn is_retryable_error(err: &(dyn std::error::Error + 'static)) -> bool {
             // https://www.rfc-editor.org/rfc/rfc9113.html#section-8.7-3.2
             if err.is_reset()
                 && err.is_remote()
-                && err.reason() == Some(h2::Reason::REFUSED_STREAM)
+                && err.reason() == Some(http2::Reason::REFUSED_STREAM)
             {
                 return true;
             }

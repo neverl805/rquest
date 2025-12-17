@@ -407,10 +407,6 @@ version = "1"
 [dependencies.http-body-util]
 version = "0.1"
 
-[dependencies.h2]
-version = "0.4"
-features = ["unstable"]
-
 [dependencies.http2]
 #path = "../http2"
 git = "https://github.com/neverl805/http2"
