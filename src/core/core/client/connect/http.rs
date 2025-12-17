@@ -896,14 +896,17 @@ fn connect(
         // This socket option desires an integer index for the interface, so we
         // must first determine the index of the requested interface name using
         // `if_nametoindex`.
-        #[cfg(any(
-            target_os = "illumos",
-            target_os = "ios",
-            target_os = "macos",
-            target_os = "solaris",
-            target_os = "tvos",
-            target_os = "visionos",
-            target_os = "watchos",
+        #[cfg(all(
+            feature = "apple-network-device-binding",
+            any(
+                target_os = "illumos",
+                target_os = "ios",
+                target_os = "macos",
+                target_os = "solaris",
+                target_os = "tvos",
+                target_os = "visionos",
+                target_os = "watchos",
+            )
         ))]
         {
             #[allow(unsafe_code)]
