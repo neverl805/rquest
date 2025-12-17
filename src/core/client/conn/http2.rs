@@ -246,10 +246,6 @@ where
 
             // IMPORTANT: Set settings_order FIRST, before any other settings
             if let Some(order) = self.opts.settings_order {
-                eprintln!("[DEBUG rquest http2.rs] Setting settings_order:");
-                for (i, id) in order.into_iter().enumerate() {
-                    eprintln!("  [{}] {:?} (ID: {})", i, id, u16::from(*id));
-                }
                 builder.settings_order(order);
             }
 
