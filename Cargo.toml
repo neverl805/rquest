@@ -370,7 +370,7 @@ optional = true
 package = "cookie"
 
 [dependencies.cookie_store]
-version = "0.21"
+version = "0.22"
 optional = true
 
 [dependencies.encoding_rs]
