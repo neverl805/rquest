@@ -513,7 +513,7 @@ version = "0.21.0"
 version = "2.5"
 
 [dependencies.webpki-root-certs]
-version = "0.26.0"
+version = "1.0.4"
 optional = true
 
 [dev-dependencies.brotli]
